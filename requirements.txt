@@ -1,0 +1,13 @@
+opencv-python
+mediapipe
+numpy
+pandas
+matplotlib
+scikit-learn
+torch
+torchvision
+torchaudio
+statsmodels
+pyttsx3
+joblib
+pyyaml

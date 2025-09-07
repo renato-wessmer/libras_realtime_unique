@@ -1,0 +1,9 @@
+Copyright (c) 2025 Renato Wessner
+
+All rights reserved.
+
+Permission is NOT granted to copy, distribute, or modify this software without the explicit
+written consent of the copyright holder, except as allowed by applicable law.
+
+This repository depends on third-party libraries (e.g., OpenCV, MediaPipe, PyTorch,
+scikit-learn) that are licensed separately by their respective authors.
