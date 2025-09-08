@@ -193,9 +193,7 @@ def main():
             feat = vectorize_landmarks(pose, left, right)
 
             # === Estático (RF) ===
-            sp = None
-            static_idx = None
-            static_label = None
+            sp, static_idx, static_label = None, None, None
             if static_model is not None:
                 sp = static_model.predict_proba([feat])[0] if hasattr(static_model, "predict_proba") else None
                 if sp is not None:
@@ -212,9 +210,20 @@ def main():
                 with torch.no_grad():
                     logits = dyn_model(xb).cpu().numpy()
                     dyn_probs = softmax(logits)[0]
+
+                    # 1) decisão padrão: argmax + threshold
                     d_idx = argmax_threshold(dyn_probs, args.dynamic_thr)
-                    if d_idx is not None:
-                        dynamic_label = dyn_labels[d_idx]
+                    cand = dyn_labels[d_idx] if d_idx is not None else None
+
+                    # 2) regra extra: só confirma gesto se vencer NONE por margem (ratio)
+                    if cand is not None and 'NONE' in dyn_labels and cand != 'NONE':
+                        p_cand = float(dyn_probs[d_idx])
+                        p_none = float(dyn_probs[dyn_labels.index('NONE')])
+                        ratio = p_cand / (p_cand + p_none + 1e-8)
+                        if ratio < 0.55:  # >=55% do par (cand vs NONE)
+                            cand = None
+
+                    dynamic_label = cand
 
             # Decisão: dinâmico tem prioridade
             final_label = dynamic_label if dynamic_label is not None else static_label
@@ -224,7 +233,7 @@ def main():
             disp = frame.copy()
             draw_landmarks(disp, results)
 
-            # Transcript (linha superior): usa frase mapeada, apenas quando decisão válida (≠ NONE)
+            # Transcript (linha superior): só adiciona quando decisão válida (≠ NONE)
             if decided and decided != "NONE":
                 token_raw = decided.replace("_", " ")
                 token = PHRASE_MAP.get(decided, PHRASE_MAP.get(token_raw.upper(), token_raw))
@@ -251,7 +260,7 @@ def main():
             prog = len(buffer) / max(1, args.seq_len)
             draw_progress(disp, prog)
 
-            # Título grande: MOSTRA SOMENTE quando houver decisão válida (≠ NONE)
+            # Título grande: MOSTRA SOMENTE quando decisão válida (≠ NONE)
             if decided and decided != "NONE":
                 big = PHRASE_MAP.get(decided, PHRASE_MAP.get(decided.replace("_", " ").upper(), decided))
                 put_text(disp, big, (args.sidebar + 16, 70), scale=1.2, color=(120, 255, 120), thickness=3)
